@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import socket from '../utils/socket';
 import '@chatscope/chat-ui-kit-styles/dist/default/styles.min.css';
 import {
@@ -10,10 +10,14 @@ import {
     Message,
     MessageInput
 } from '@chatscope/chat-ui-kit-react';
+import { conversations } from '../mockData';
+import Sidebar from './Sidebar';
 
 const ChatApp = () => {
     const [messages, setMessages] = useState([]);
     const [messageInput, setMessageInput] = useState('');
+    const [selectedConversation, setSelectedConversation] = useState(null);
+    const messageInputRef = useRef(null);
 
     useEffect(() => {
         socket.connect();
@@ -33,6 +37,12 @@ const ChatApp = () => {
         };
     }, []);
 
+    useEffect(() => {
+        if (selectedConversation && messageInputRef.current) {
+            messageInputRef.current.focus();
+        }
+    }, [selectedConversation]);
+
     const sendMessage = () => {
         if (messageInput.trim()) {
             socket.emit('send_message', { message: messageInput });
@@ -41,32 +51,42 @@ const ChatApp = () => {
         }
     };
 
+    const handleUserClick = (plate) => {
+        const conversation = conversations.find(conv => conv.plate === plate);
+        setSelectedConversation(conversation);
+        setMessages([]);
+    };
+
     return (
         <MainContainer>
-            <ChatContainer>
-                <ConversationHeader>
-                    <Avatar src="https://via.placeholder.com/150" name="Beto" />
-                    <ConversationHeader.Content userName="Beto" />
-                </ConversationHeader>
-                <MessageList>
-                    {messages.map((message, index) => (
-                        <Message
-                            key={index}
-                            model={{
-                                message: message.text,
-                                direction: message.type === 'sent' ? 'outgoing' : 'incoming',
-                            }}
-                        />
-                    ))}
-                </MessageList>
-                <MessageInput
-                    placeholder="Digite aqui"
-                    value={messageInput}
-                    onChange={(val) => setMessageInput(val)}
-                    onSend={sendMessage}
-                    attachButton={false}
-                />
-            </ChatContainer>
+            <Sidebar handleUserClick={handleUserClick} />
+            {selectedConversation && (
+                <ChatContainer>
+                    <ConversationHeader>
+                        <Avatar src={selectedConversation.avatar} />
+                        <ConversationHeader.Content userName={selectedConversation.plate} />
+                    </ConversationHeader>
+                    <MessageList>
+                        {messages.map((message, index) => (
+                            <Message
+                                key={index}
+                                model={{
+                                    message: message.text,
+                                    direction: message.type === 'sent' ? 'outgoing' : 'incoming',
+                                }}
+                            />
+                        ))}
+                    </MessageList>
+                    <MessageInput
+                        placeholder="Digite aqui"
+                        value={messageInput}
+                        onChange={(val) => setMessageInput(val)}
+                        onSend={sendMessage}
+                        attachButton={false}
+                        ref={messageInputRef}
+                    />
+                </ChatContainer>
+            )}
         </MainContainer>
     );
 };
